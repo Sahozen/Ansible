@@ -1,24 +1,53 @@
-- name: Déployer Zabbix Agent
-  hosts: infra_home
-  become: true
+- name: Déployer l'agent Zabbix v2 uniquement s'il est absent
+  hosts: zabbix_clients
+  become: yes
+
   tasks:
-    - name: Installer zabbix-agent2
+    - name: Vérifier si l’agent Zabbix v2 est installé
+      shell: dpkg -s zabbix-agent2
+      register: zabbix_check
+      ignore_errors: yes
+
+    - name: Installer les dépendances
+      apt:
+        name: gnupg
+        state: present
+        update_cache: yes
+
+    - name: Ajouter le dépôt officiel Zabbix
+      apt_repository:
+        repo: "deb https://repo.zabbix.com/zabbix/6.0/debian bookworm main"
+        state: present
+        filename: zabbix
+
+    - name: Importer la clé GPG de Zabbix
+      ansible.builtin.apt_key:
+        url: https://repo.zabbix.com/zabbix-official-repo.key
+        state: present
+
+    - name: Installer zabbix-agent2 s’il n’est pas installé
       apt:
         name: zabbix-agent2
         state: present
         update_cache: yes
+      when: zabbix_check.rc != 0
 
-    - name: Configurer l'agent
-      copy:
-        dest: /etc/zabbix/zabbix_agent2.conf
-        content: |
-          Server=192.168.0.252
-          ServerActive=192.168.0.252
-          Hostname={{ inventory_hostname }}
+    - name: Modifier la conf pour pointer vers le serveur Zabbix
+      lineinfile:
+        path: /etc/zabbix/zabbix_agent2.conf
+        regexp: '^Server='
+        line: 'Server=192.168.0.252'
+        backup: yes
+      notify: redémarrer zabbix
 
-    - name: Redémarrer le service
-      service:
+    - name: Activer et démarrer le service
+      systemd:
+        name: zabbix-agent2
+        enabled: yes
+        state: started
+
+  handlers:
+    - name: redémarrer zabbix
+      systemd:
         name: zabbix-agent2
         state: restarted
-        enabled: true
-
