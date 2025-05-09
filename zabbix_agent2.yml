@@ -1,0 +1,11 @@
+- name: Installer Zabbix Agent 2 sur tous les serveurs
+  hosts: all
+  become: true
+  roles:
+    - role: alvistack.zabbix_agent
+  vars:
+    zabbix_agent_version: "2.4.0"
+    zabbix_agent_manage_service: true
+    zabbix_agent_server: 192.168.0.252
+    zabbix_agent_serveractive: 192.168.0.252
+    zabbix_agent_hostname: "{{ inventory_hostname }}"
