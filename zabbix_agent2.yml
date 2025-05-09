@@ -1,11 +1,23 @@
-- name: Installer Zabbix Agent 2 sur tous les serveurs
-  hosts: all
+- name: Déployer Zabbix Agent
+  hosts: infra_home
   become: true
-  roles:
-    - role: alvistack.zabbix_agent
-  vars:
-    zabbix_agent_version: "2.4.0"
-    zabbix_agent_manage_service: true
-    zabbix_agent_server: 192.168.0.252
-    zabbix_agent_serveractive: 192.168.0.252
-    zabbix_agent_hostname: "{{ inventory_hostname }}"
+  tasks:
+    - name: Installer zabbix-agent2
+      apt:
+        name: zabbix-agent2
+        state: present
+        update_cache: yes
+
+    - name: Configurer l'agent
+      copy:
+        dest: /etc/zabbix/zabbix_agent2.conf
+        content: |
+          Server=192.168.0.252
+          ServerActive=192.168.0.252
+          Hostname={{ inventory_hostname }}
+
+    - name: Redémarrer le service
+      service:
+        name: zabbix-agent2
+        state: restarted
+        enabled: true
